@@ -9,18 +9,32 @@ import (
 )
 
 // newRouter returns a new gorilla mux router with routes injected
-func (S *Server) newRouter() *mux.Router {
+func (S *Server) newRouter() http.Handler {
 	R := mux.NewRouter()
 
 	R.Handle("/api/v1/secret", handlers.MethodHandler{
-		http.MethodGet:    handlers.CompressHandler(handlers.CombinedLoggingHandler(os.Stdout, http.HandlerFunc(S.retrieveHandler))),
-		http.MethodDelete: handlers.CompressHandler(handlers.CombinedLoggingHandler(os.Stdout, http.HandlerFunc(S.burnHandler))),
-		http.MethodPost:   handlers.CompressHandler(handlers.CombinedLoggingHandler(os.Stdout, http.HandlerFunc(S.generateHandler))),
-		http.MethodPut:    handlers.CompressHandler(handlers.CombinedLoggingHandler(os.Stdout, http.HandlerFunc(S.createHandler))),
-	})
-	R.Handle("/api/v1/metadata", handlers.MethodHandler{
-		http.MethodGet: handlers.CompressHandler(handlers.CombinedLoggingHandler(os.Stdout, http.HandlerFunc(S.retrieveMetadataHandler))),
+		http.MethodGet: handlers.ContentTypeHandler(
+			handlers.CompressHandler(
+				handlers.CombinedLoggingHandler(
+					os.Stdout,
+					http.HandlerFunc(S.getHandler))),
+			"application/json"),
+		http.MethodDelete: handlers.ContentTypeHandler(
+			handlers.CompressHandler(
+				handlers.CombinedLoggingHandler(
+					os.Stdout,
+					http.HandlerFunc(S.deleteHandler))),
+			"application/json"),
+		http.MethodPost: handlers.ContentTypeHandler(
+			handlers.CompressHandler(
+				handlers.CombinedLoggingHandler(
+					os.Stdout,
+					http.HandlerFunc(S.createHandler))),
+			"application/json"),
 	})
 
-	return R
+	return handlers.CORS(
+		handlers.AllowCredentials(),
+		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodDelete}),
+		handlers.AllowedOrigins([]string{"*"}))(R)
 }
